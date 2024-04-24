@@ -1,0 +1,9 @@
+[package]
+name = "dnstop"
+version = "0.0.1"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/wqld/dnstop"
+description = "An efficient DNS monitoring tool based on eBPF"
+
+[dependencies]
