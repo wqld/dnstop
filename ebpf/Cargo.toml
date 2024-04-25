@@ -7,6 +7,7 @@ edition = "2021"
 aya-ebpf = "0.1.0"
 aya-log-ebpf = "0.1.0"
 dnstop-common = { path = "../common" }
+network-types = "0.0.5"
 
 [[bin]]
 name = "dnstop"

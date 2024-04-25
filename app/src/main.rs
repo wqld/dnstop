@@ -47,9 +47,14 @@ async fn main() -> Result<(), anyhow::Error> {
     // error adding clsact to the interface if it is already added is harmless
     // the full cleanup can be done with 'sudo tc qdisc del dev eth0 clsact'.
     let _ = tc::qdisc_add_clsact(&opt.iface);
-    let program: &mut SchedClassifier = bpf.program_mut("dnstop").unwrap().try_into()?;
-    program.load()?;
-    program.attach(&opt.iface, TcAttachType::Egress)?;
+
+    let ingress: &mut SchedClassifier = bpf.program_mut("ingress").unwrap().try_into()?;
+    ingress.load()?;
+    ingress.attach(&opt.iface, TcAttachType::Ingress)?;
+
+    let egress: &mut SchedClassifier = bpf.program_mut("egress").unwrap().try_into()?;
+    egress.load()?;
+    egress.attach(&opt.iface, TcAttachType::Egress)?;
 
     info!("Waiting for Ctrl-C...");
     signal::ctrl_c().await?;
