@@ -58,40 +58,25 @@ fn try_egress(ctx: TcContext) -> Result<i32, ()> {
 }
 
 fn handle_udp_ingress(ctx: TcContext) -> Result<i32, ()> {
-    let ip_hdr: Ipv4Hdr = ctx.load(EthHdr::LEN).map_err(|_| ())?;
-    let udp_hdr: UdpHdr = ctx.load(EthHdr::LEN + Ipv4Hdr::LEN).map_err(|_| ())?;
-
-    let src_ip = u32::from_be(ip_hdr.src_addr);
-    let src_port = u16::from_be(udp_hdr.source);
+    let (src_ip, src_port, dst_ip, dst_port) = get_socket_pair(&ctx)?;
 
     if src_port == 53 {
-        info!(&ctx, "response from {:i}:{}", src_ip, src_port);
-
-        let dns_hdr: DnsHdr = ctx
-            .load(EthHdr::LEN + Ipv4Hdr::LEN + UdpHdr::LEN)
-            .map_err(|_| ())?;
-
-        info!(
-            &ctx,
-            "DNS response id: {}, flag: {}, qc: {}, ac: {}, authc: {}, addc: {}",
-            u16::from_be(dns_hdr.id),
-            u16::from_be(dns_hdr.flags),
-            u16::from_be(dns_hdr.question_count),
-            u16::from_be(dns_hdr.answer_count),
-            u16::from_be(dns_hdr.authority_count),
-            u16::from_be(dns_hdr.additional_count)
-        );
-
-        let flags = u16::from_be(dns_hdr.flags);
-        let qr = flags & RAW_QUERY;
-        let opcode = (flags >> RAW_OPCODE_SHIFT) & RAW_OPCODE_MASK;
-
-        info!(&ctx, "qr: {}, opcode: {}", qr, opcode);
+        let _ = parse_dns(&ctx)?;
     }
     Ok(TC_ACT_PIPE)
 }
 
 fn handle_udp_egress(ctx: TcContext) -> Result<i32, ()> {
+    let (src_ip, src_port, dst_ip, dst_port) = get_socket_pair(&ctx)?;
+
+    if dst_port == 53 {
+        let _ = parse_dns(&ctx)?;
+    }
+
+    Ok(TC_ACT_PIPE)
+}
+
+fn get_socket_pair(ctx: &TcContext) -> Result<(u32, u16, u32, u16), ()> {
     let ip_hdr: Ipv4Hdr = ctx.load(EthHdr::LEN).map_err(|_| ())?;
     let udp_hdr: UdpHdr = ctx.load(EthHdr::LEN + Ipv4Hdr::LEN).map_err(|_| ())?;
 
@@ -100,35 +85,37 @@ fn handle_udp_egress(ctx: TcContext) -> Result<i32, ()> {
     let dst_ip = u32::from_be(ip_hdr.dst_addr);
     let dst_port = u16::from_be(udp_hdr.dest);
 
-    if dst_port == 53 {
-        info!(
-            &ctx,
-            "request dns query from {:i}:{} to {:i}:{}", src_ip, src_port, dst_ip, dst_port
-        );
+    info!(
+        ctx,
+        "from {:i}:{} to {:i}:{}", src_ip, src_port, dst_ip, dst_port
+    );
 
-        let dns_hdr: DnsHdr = ctx
-            .load(EthHdr::LEN + Ipv4Hdr::LEN + UdpHdr::LEN)
-            .map_err(|_| ())?;
+    Ok((src_ip, src_port, dst_ip, dst_port))
+}
 
-        info!(
-            &ctx,
-            "DNS request id: {}, flag: {}, qc: {}, ac: {}, authc: {}, addc: {}",
-            u16::from_be(dns_hdr.id),
-            u16::from_be(dns_hdr.flags),
-            u16::from_be(dns_hdr.question_count),
-            u16::from_be(dns_hdr.answer_count),
-            u16::from_be(dns_hdr.authority_count),
-            u16::from_be(dns_hdr.additional_count)
-        );
+fn parse_dns(ctx: &TcContext) -> Result<(u16, u16), ()> {
+    let dns_hdr: DnsHdr = ctx
+        .load(EthHdr::LEN + Ipv4Hdr::LEN + UdpHdr::LEN)
+        .map_err(|_| ())?;
 
-        let flags = u16::from_be(dns_hdr.flags);
-        let qr = flags & RAW_QUERY;
-        let opcode = (flags >> RAW_OPCODE_SHIFT) & RAW_OPCODE_MASK;
+    info!(
+        ctx,
+        "DNS response id: {}, flag: {}, qc: {}, ac: {}, authc: {}, addc: {}",
+        u16::from_be(dns_hdr.id),
+        u16::from_be(dns_hdr.flags),
+        u16::from_be(dns_hdr.question_count),
+        u16::from_be(dns_hdr.answer_count),
+        u16::from_be(dns_hdr.authority_count),
+        u16::from_be(dns_hdr.additional_count)
+    );
 
-        info!(&ctx, "qr: {}, opcode: {}", qr, opcode);
-    }
+    let flags = u16::from_be(dns_hdr.flags);
+    let qr = flags & RAW_QUERY;
+    let opcode = (flags >> RAW_OPCODE_SHIFT) & RAW_OPCODE_MASK;
 
-    Ok(TC_ACT_PIPE)
+    info!(ctx, "qr: {}, opcode: {}", qr, opcode);
+
+    Ok((qr, opcode))
 }
 
 #[panic_handler]
