@@ -40,7 +40,7 @@ git clone https://github.com/wqld/dnstop.git
 just build-image
 ```
 
-You can specify the target architecture as follows. (The default is aarch64).
+You can specify the target architecture as follows. (default: aarch64).
 
 ```bash
 just build-image --arch x86_64
@@ -49,7 +49,7 @@ just build-image --arch x86_64
 ### 3. run the container
 
 It requires privileged privileges because it needs to run the eBPF program.
-Specify the network interface to watch for DNS packets with the `--iface` option.
+Specify the network interface to watch for DNS packets with the `--iface` option. (default: `eth0`)
 
 ```bash
 docker run --privileged --rm --network host dnstop:manually --iface enp0s1
