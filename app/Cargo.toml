@@ -8,7 +8,6 @@ publish = false
 aya = "0.12"
 aya-log = "0.2"
 clap = { version = "4.1", features = ["derive"] }
-dnstop-common = { path = "../common", features = ["user"] }
 anyhow = "1"
 env_logger = "0.10"
 libc = "0.2"
