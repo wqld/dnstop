@@ -54,3 +54,11 @@ Specify the network interface to watch for DNS packets with the `--iface` option
 ```bash
 docker run --privileged --rm --network host dnstop:manually --iface enp0s1
 ```
+
+## Goal
+
+This project was started to make it easy to verify that all DNS queries from an application running inside a specific Pod on Kubernetes are handled correctly. Therefore, the following command can be used to accomplish this goal:
+
+```bash
+kubectl debug {POD_NAME} --image=dnstop:manually --profile='sysadmin' --it
+```
