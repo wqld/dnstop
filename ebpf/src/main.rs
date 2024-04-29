@@ -47,34 +47,35 @@ pub fn egress(ctx: TcContext) -> i32 {
 }
 
 fn try_ingress(ctx: &TcContext) -> Result<i32, &'static str> {
-    let eth_hdr: EthHdr = ctx.load(0).map_err(|_| "failed to load Ethernet header")?;
-    match eth_hdr.ether_type {
-        EtherType::Ipv4 => {
-            let ipv4hdr: Ipv4Hdr = ctx
-                .load(EthHdr::LEN)
-                .map_err(|_| "failed to load IP header")?;
-            match ipv4hdr.proto {
-                IpProto::Udp => handle_udp_ingress(ctx),
-                _ => Ok(TC_ACT_PIPE),
-            }
-        }
+    match load_eth_and_ip_headers(ctx) {
+        Ok((_, ipv4hdr)) => match ipv4hdr.proto {
+            IpProto::Udp => handle_udp_ingress(ctx),
+            _ => Ok(TC_ACT_PIPE),
+        },
         _ => Ok(TC_ACT_PIPE),
     }
 }
 
 fn try_egress(ctx: &TcContext) -> Result<i32, &'static str> {
+    match load_eth_and_ip_headers(ctx) {
+        Ok((_, ipv4hdr)) => match ipv4hdr.proto {
+            IpProto::Udp => handle_udp_egress(ctx),
+            _ => Ok(TC_ACT_PIPE),
+        },
+        _ => Ok(TC_ACT_PIPE),
+    }
+}
+
+fn load_eth_and_ip_headers(ctx: &TcContext) -> Result<(EthHdr, Ipv4Hdr), &'static str> {
     let eth_hdr: EthHdr = ctx.load(0).map_err(|_| "failed to load Ethernet header")?;
     match eth_hdr.ether_type {
         EtherType::Ipv4 => {
             let ipv4hdr: Ipv4Hdr = ctx
                 .load(EthHdr::LEN)
                 .map_err(|_| "failed to load IP header")?;
-            match ipv4hdr.proto {
-                IpProto::Udp => handle_udp_egress(ctx),
-                _ => Ok(TC_ACT_PIPE),
-            }
+            Ok((eth_hdr, ipv4hdr))
         }
-        _ => Ok(TC_ACT_PIPE),
+        _ => Err("not IPv4"),
     }
 }
 
