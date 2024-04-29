@@ -60,5 +60,5 @@ docker run --privileged --rm --network host dnstop:manually --iface enp0s1
 This project was started to make it easy to verify that all DNS queries from an application running inside a specific Pod on Kubernetes are handled correctly. Therefore, the following command can be used to accomplish this goal:
 
 ```bash
-kubectl debug {POD_NAME} --image=dnstop:manually --profile='sysadmin' --it
+kubectl debug {POD_NAME} --image=ghcr.io/wqld/dnstop:0.1.0 --profile='sysadmin' --it
 ```
